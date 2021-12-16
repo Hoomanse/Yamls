@@ -1,0 +1,33 @@
+{
+  "base": {
+    "correlationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "userHostAddress": "string",
+    "userAgent": "string",
+    "requestChain": [
+      {
+        "serviceId": 0,
+        "serviceName": "string",
+        "methodName": "string",
+        "sourceLineNumber": 0,
+        "callingAssembly": "string",
+        "requestUtcDate": "2021-03-08T17:09:10.982Z",
+        "exceptionList": [
+          null
+        ]
+      }
+    ],
+    "rawJsonRequest": "string"
+  },
+  "raiseError": true,
+  "input": {
+    "marginalTaxInput": {
+      "relationship": "None",
+      "wages": 0,
+      "zipCode": "string"
+    },
+    "inputModel": {
+
+    },
+    "zmId": "string"
+  }
+}

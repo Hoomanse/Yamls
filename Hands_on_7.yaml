@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  InstanceType:
+    Description: "Webserver instance type."
+    Type: "String"
+    Default: "t2.micro"
+    AllowedValues:
+      - "t2.micro"
+      - "t2.medium"
+
+Resources:
+  ClassVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      CidrBlock: "10.0.0.0/16"
+      Tags:
+        - Key: Environment
+          Value: Class
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ClassVpc
+      CidrBlock: "10.0.0.0/24"
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ClassVpc
+      CidrBlock: "10.0.1.0/24"
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+
+  ClassServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+
+  ClassInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref ClassServerRole
+
+  WebserverSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref ClassVpc
+      GroupDescription: "Allow access from SSH traffic"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: "0.0.0.0/0"
+
+  InternetGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: stack
+        Value: class
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGW
+      VpcId: !Ref ClassVpc
+
+  PublicRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ClassVpc
+      
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      RouteTableId: !Ref PublicRT
+      GatewayId: !Ref InternetGW
+    DependsOn:
+      - InternetGW
+
+  PublicSubnet1RTAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRT
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RTAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRT
+      SubnetId: !Ref PublicSubnet2
+
+  WebAlb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: "idle_timeout.timeout_seconds"
+          Value: "30"
+      Name: !Join ["", [!Ref AWS::StackName, "-alb"]]
+      Scheme: "internet-facing"
+      SecurityGroups:
+        - !Ref WebserverSG
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: "Name"
+          Value: "WebAlb"
+
+  WebAlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref WebAlbTG
+          Type: "forward"
+      LoadBalancerArn: !Ref WebAlb
+      Port: "80"
+      Protocol: "HTTP"
+
+  WebAlbTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: "/index.php"
+      HealthCheckProtocol: "HTTP"
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Matcher:
+        HttpCode: "200,302"
+      TargetType: "instance"
+      Port: 80
+      Protocol: "HTTP"
+      TargetGroupAttributes:
+        - Key: "deregistration_delay.timeout_seconds"
+          Value: "30"
+      Targets:
+        - Id: !Ref Web1
+          Port: "80"
+        - Id: !Ref Web2
+          Port: "80"
+      VpcId: !Ref ClassVpc
+
+  Web1:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: "ami-034b1e5cba4ade574"
+      SubnetId: !Ref PublicSubnet1
+      IamInstanceProfile: !Ref ClassInstanceProfile
+      SecurityGroupIds:
+        - !Ref WebserverSG
+      Tags:
+        - Key: "Name"
+          Value: "Web1"
+          
+  Web2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: "ami-034b1e5cba4ade574"
+      SubnetId: !Ref PublicSubnet2
+      IamInstanceProfile: !Ref ClassInstanceProfile
+      SecurityGroupIds:
+        - !Ref WebserverSG
+      Tags:
+        - Key: "Name"
+          Value: "Web2"

@@ -1,0 +1,7 @@
+authentication-key: !ENV ${AUTHENTICATION_KEY}
+aws:
+  secret-key: !ENV ${AWS_SECRET_KEY}
+  access-key: !ENV ${AWS_ACCESS_KEY}
+  region: !ENV ${AWS_REGION}
+  s3:
+    bucket: !ENV ${AWS_S3_BUCKET}

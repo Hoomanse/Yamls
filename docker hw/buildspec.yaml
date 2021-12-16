@@ -1,0 +1,26 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 10
+      python: 3.7
+  pre_build:
+    commands:
+      - pip install -r app/requirements.txt
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - flake8 app/*.py
+  build:
+    commands:
+      - echo Build the CSS using less.
+      - npm install -g less
+      - mkdir -p static/css
+      - lessc styles.less static/css/styles.css
+  post_build:
+    commands:
+      -XXX
+
+artifacts:
+  files:
+    - '**/*'
+  name: python-app-$(date +%y%m%d%H%M).zip

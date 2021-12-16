@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Resources:
+  DatalogFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: datalog.lambda_handler
+      CodeUri: lambda/datalog.py
+      MemorySize: 256
+      Runtime: python3.9
+      Timeout: 15
+      Policies: AWSLambdaKinesisExecutionRole
+      Events:
+        StreamData:
+          Type: Kinesis
+          Properties:
+            BatchSize: 25
+            StartingPosition: TRIM_HORIZON
+            Stream: !GetAtt DataStream.Arn
+        Tags:
+          Project: SEIS665
+
+
+  DatastoreFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: datastore.lambda_handler
+      CodeUri: lambda/datastore.py
+      MemorySize: 256
+      Runtime: python3.9
+      Timeout: 15
+      Policies: 
+      - AWSLambdaBasicExecutionRole
+      - AmazonDynamoDBFullAccess
+      Events:
+        StreamData:
+          Type: Kinesis
+          Properties:
+            BatchSize: 25
+            StartingPosition: TRIM_HORIZON
+            Stream: !GetAtt DataStream.Arn
+      Tags:
+        TABLE_NAME: !Ref DatapipeTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref DatapipeTable
+
+
+  DataStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: datastream
+      ShardCount: 1
+      Tags:
+        -
+          Key: 'Project'
+          Value: 'SEIS665'
+
+  DatapipeTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: DatapipeTable
+      PrimaryKey:
+        Name: id
+        Type: String
+      SSESpecification:
+        SSEEnabled: true

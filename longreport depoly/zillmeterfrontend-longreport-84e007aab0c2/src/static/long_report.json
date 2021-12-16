@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "description": "Zillmeter Report Generator",
+    "version": "1.0.0-oas3",
+    "contact": {
+      "email": "hossein.shemshadi@sinansoft.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "title": "Zillmeter Report Generator"
+  },
+  "tags": [
+    {
+      "name": "Report Generation",
+      "description": "Endpoints related to report generation"
+    }
+  ],
+  "paths": {
+    "/long-report": {
+      "post": {
+        "description": "Creating long report and upload to aws s3",
+        "summary": "Creating long report and upload to aws s3",
+        "operationId": "generateLongReport",
+        "tags": [
+          "reporting"
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/components/responses/ReportUrl"
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "ReportUrl": {
+        "description": "URL for generated report",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DocumentUrl"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "DocumentUrl": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

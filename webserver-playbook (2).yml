@@ -1,0 +1,8 @@
+---
+- hosts: localhost
+  become: yes
+  become_method: sudo 
+  tasks: 
+    - yum: name=nginx state=present
+    - service: name=nginx enabled=yes
+    
